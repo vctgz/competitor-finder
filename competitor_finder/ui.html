@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Competitor Finder</title>
+<style>
+  :root { --bg:oklch(97% 0 0); --card:#ffffff; --line:#e5e7eb; --txt:#111827; --mut:#6b7280; --accent:#2563eb; --good:#0f9d6b; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  .wrap { max-width:880px; margin:0 auto; padding:28px 20px 80px; }
+  h1 { font-size:22px; margin:0 0 2px; }
+  .sub { color:var(--mut); margin:0 0 16px; font-size:13px; }
+  .client { display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap; }
+  .client input { flex:1; min-width:200px; background:var(--card); color:var(--txt); border:1px solid var(--line);
+                  border-radius:9px; padding:10px 12px; font-size:14px; }
+  .sugrow { margin-bottom:10px; }
+  .sugbtn { white-space:nowrap; padding:10px 14px; font-size:14px; }
+  .sugbtn:disabled { opacity:.6; }
+  #sugwrap { margin:2px 0 10px; }
+  .suglabel { color:var(--mut); font-size:12.5px; margin-bottom:7px; }
+  .suglabel b { color:var(--txt); font-weight:600; }
+  .sugchips { display:flex; flex-wrap:wrap; gap:7px; }
+  .sugchip { background:var(--card); color:var(--txt); border:1px solid var(--line); border-radius:20px;
+             padding:5px 12px; font-size:13px; cursor:pointer; user-select:none; transition:all .1s; }
+  .sugchip:hover { border-color:#c7d2fe; }
+  .sugchip.on { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600; }
+  .catfield { position:relative; }
+  #catinput { width:100%; background:var(--card); color:var(--txt); border:1px solid var(--line);
+              border-radius:9px; padding:10px 12px; font-size:14px; outline:0; }
+  .catmenu { position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:30; background:var(--card);
+             border:1px solid var(--line); border-radius:9px; box-shadow:0 6px 20px rgba(0,0,0,.12); max-height:260px; overflow:auto; }
+  .catmenu .opt { padding:8px 12px; font-size:13.5px; cursor:pointer; }
+  .catmenu .opt.active { background:#eef2ff; }
+  .brief { background:#f8fafc; border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:10px;
+           padding:13px 16px; margin-top:16px; }
+  .brief .bt { font-weight:600; font-size:14px; }
+  .brief .bd { margin-top:4px; font-size:13.5px; }
+  .brief .bc { margin-top:5px; font-size:13px; color:var(--mut); }
+  .brief .bl { color:var(--txt); font-weight:600; }
+  .brief .berr { color:var(--mut); font-size:13px; font-style:italic; }
+  textarea { width:100%; min-height:150px; resize:vertical; background:var(--card); color:var(--txt);
+             border:1px solid var(--line); border-radius:10px; padding:12px 14px; font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; }
+  .row { display:flex; gap:12px; align-items:center; margin-top:12px; flex-wrap:wrap; }
+  button { background:var(--accent); color:#fff; border:0; border-radius:9px; padding:10px 20px; font-size:15px; font-weight:600; cursor:pointer;
+           transition:background .15s ease, box-shadow .15s ease, transform .05s ease; }
+  button:hover:not(:disabled) { background:#1d4ed8; box-shadow:0 2px 8px rgba(37,99,235,.28); }
+  button:active:not(:disabled) { transform:translateY(1px); box-shadow:none; }
+  button.ghost { background:transparent; color:var(--txt); border:1px solid var(--line); }
+  button.ghost:hover:not(:disabled) { background:#f3f4f6; border-color:#d1d5db; box-shadow:none; }
+  button:disabled { opacity:.55; cursor:default; }
+  label.cnt { color:var(--mut); font-size:13px; display:flex; gap:6px; align-items:center; }
+  label.cnt input[type=number] { width:54px; background:var(--card); color:var(--txt); border:1px solid var(--line); border-radius:7px; padding:5px 7px; }
+  label.cnt input[type=range] { width:120px; accent-color:var(--accent); vertical-align:middle; cursor:pointer; }
+  #radiusVal { display:inline-block; min-width:40px; color:var(--txt); font-variant-numeric:tabular-nums; }
+  .meta { color:var(--mut); font-size:13px; margin-left:auto; }
+  .loc { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-top:16px; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+  .loc h2 { font-size:16px; margin:0; }
+  .loc .matched { color:var(--mut); font-size:12.5px; margin:3px 0 0; }
+  .badge { display:inline-block; font-size:11px; padding:1px 7px; border-radius:20px; border:1px solid var(--line); color:var(--mut); margin-left:8px; vertical-align:middle; }
+  .err { color:#dc2626; font-size:13px; margin:6px 0 0; }
+  ol { margin:12px 0 0; padding-left:0; list-style:none; counter-reset:c; }
+  ol li { counter-increment:c; display:flex; gap:10px; padding:8px 0; border-top:1px solid var(--line); }
+  ol li::before { content:counter(c); color:var(--mut); font-variant-numeric:tabular-nums; min-width:18px; text-align:right; }
+  .cn { font-weight:600; }
+  .ca { color:var(--mut); font-size:12.5px; }
+  .pill { color:var(--mut); font-size:12px; white-space:nowrap; margin-left:auto; padding-left:10px; text-align:right; }
+  .star { color:#f59e0b; }
+  a.maps { color:var(--accent); text-decoration:none; font-size:12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Competitor Finder</h1>
+  <p class="sub">Paste one address per line. We'll match each location to its store and find the nearest competitors. Up to 250 at a time. <a href="/advanced" style="color:var(--accent);text-decoration:none">Advanced mode, pick competitor types →</a></p>
+  <div class="client">
+    <input id="client" type="text" placeholder="Client name">
+    <input id="website" type="text" placeholder="Main website (sharpens the market read)">
+  </div>
+  <textarea id="in" placeholder="123 Main St., Town, ST 00000"></textarea>
+  <div class="row">
+    <button id="go">Find competitors</button>
+    <button id="csv" class="ghost" hidden>Export CSV</button>
+    <label class="cnt">max competitors each <input id="count" type="number" min="3" max="20" value="__COUNT__"></label>
+    <label class="cnt">within <input id="radius" type="range" min="1" max="30" step="1" value="10"><span id="radiusVal">10 mi</span></label>
+    <span class="meta" id="meta"></span>
+  </div>
+  <div id="out"></div>
+</div>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => (s||"").replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const mapLink = p => p.place_id
+  ? `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(p.place_id)}`
+  : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((p.title||'')+' '+(p.address||''))}`;
+
+function rating(p){
+  if(p.rating==null) return '';
+  return `<span class="star">★</span> ${p.rating}${p.votes!=null?` (${p.votes})`:''}`;
+}
+function compRow(c){
+  const dist = c.distance_mi!=null ? `${c.distance_mi} mi · ` : '';
+  return `<li><div><div class="cn">${esc(c.title)}</div>`
+    + `<div class="ca">${esc(c.category)}${c.address?' · '+esc(c.address):''}</div></div>`
+    + `<div class="pill">${dist}${rating(c)}<br><a class="maps" target="_blank" href="${mapLink(c)}">view ↗</a></div></li>`;
+}
+function briefBlock(b){
+  if(!b) return '';
+  if(!b.business && !b.market){
+    return `<div class="brief"><div class="berr">market analysis unavailable${b.error?` — ${esc(b.error)}`:''}</div></div>`;
+  }
+  const comps = (b.competitors||[]).length
+    ? `<div class="bc"><span class="bl">Known competitors:</span> ${b.competitors.map(esc).join(', ')}</div>` : '';
+  const mkt = b.market
+    ? `<div class="bc"><span class="bl">Market:</span> ${esc(b.market)}${b.keyword?` · searching nearby for <b>${esc(b.keyword)}</b>`:''}</div>` : '';
+  return `<div class="brief">`
+    + `<div class="bt">${esc(b.name||'Client')} — market brief</div>`
+    + (b.business?`<div class="bd">${esc(b.business)}</div>`:'')
+    + mkt + comps + `</div>`;
+}
+function locBlock(r){
+  if(!r.found || !r.store){
+    return `<div class="loc"><h2>${esc(r.query)}</h2>`
+      + `<p class="err">${esc(r.error||'not found')}</p></div>`;
+  }
+  const s = r.store;
+  const comps = r.competitors.length
+    ? `<ol>${r.competitors.map(compRow).join('')}</ol>`
+    : `<p class="err">${esc(r.error||'no competitors found')}</p>`;
+  return `<div class="loc">`
+    + `<h2>${esc(s.title)}</h2>`
+    + `<p class="matched">matched: ${esc(s.address)} · ${rating(s)} · <a class="maps" target="_blank" href="${mapLink(s)}">view ↗</a></p>`
+    + comps + `</div>`;
+}
+
+let lastResults = [];
+
+const CSV_COLS = ['store_input','store_matched','store_category','store_address','store_rating',
+  'rank','competitor','competitor_category','competitor_address','competitor_rating','competitor_votes','distance_mi'];
+const csvCell = v => {
+  const s = v==null ? '' : String(v);
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+};
+function toCSV(results){
+  const rows = [CSV_COLS.join(',')];
+  for(const r of results){
+    const s = r.store || {};
+    const base = [r.query, s.title, s.category, s.address, s.rating];
+    if(r.found && r.competitors.length){
+      r.competitors.forEach((c,i) => rows.push(
+        [...base, i+1, c.title, c.category, c.address, c.rating, c.votes, c.distance_mi].map(csvCell).join(',')));
+    } else {
+      rows.push([...base, '', '', '', '', '', '', ''].map(csvCell).join(','));
+    }
+  }
+  return rows.join('\n');
+}
+function downloadCSV(){
+  if(!lastResults.length) return;
+  const blob = new Blob([toCSV(lastResults)], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'competitors.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+async function run(){
+  const text = $('#in').value.trim();
+  if(!text){ $('#in').focus(); return; }
+  const count = Math.max(3, Math.min(20, parseInt($('#count').value)||10));
+  $('#go').disabled = true; $('#go').textContent = 'Finding…';
+  $('#csv').hidden = true; lastResults = [];
+  $('#meta').textContent = ''; $('#out').innerHTML = '';
+  try {
+    const client = $('#client').value.trim();
+    const website = $('#website').value.trim();
+    const radius = parseInt($('#radius').value);   // 1–30 mi
+    const resp = await fetch('/api/find', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({input:text, count, client, website, radius})});
+    const data = await resp.json();
+    if(data.error){ $('#out').innerHTML = `<p class="err">${esc(data.error)}</p>`; return; }
+    lastResults = data.results;
+    $('#out').innerHTML = briefBlock(data.brief) + data.results.map(locBlock).join('');
+    const found = data.results.filter(r=>r.found).length;
+    $('#meta').textContent = `${found}/${data.results.length} located`;
+    $('#csv').hidden = false;
+  } catch(e){
+    $('#out').innerHTML = `<p class="err">request failed: ${esc(String(e))}</p>`;
+  } finally {
+    $('#go').disabled = false; $('#go').textContent = 'Find competitors';
+  }
+}
+function fmtRadius(){ $('#radiusVal').textContent = parseInt($('#radius').value) + ' mi'; }
+$('#radius').addEventListener('input', fmtRadius);
+fmtRadius();
+
+$('#go').addEventListener('click', run);
+$('#csv').addEventListener('click', downloadCSV);
+$('#in').addEventListener('keydown', e => { if((e.metaKey||e.ctrlKey) && e.key==='Enter') run(); });
+</script>
+</body>
+</html>

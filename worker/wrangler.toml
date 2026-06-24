@@ -1,0 +1,26 @@
+name = "compfinder"
+main = "src/index.js"
+compatibility_date = "2024-11-06"
+workers_dev = true
+
+# Import ui.html (the SAME file the Python server serves) as a text module.
+[[rules]]
+type = "Text"
+globs = ["**/*.html"]
+fallthrough = true
+
+# Non-secret tunables. Secrets (DATAFORSEO_LOGIN / DATAFORSEO_PASSWORD) are set with
+# `wrangler secret put ...` and never live in this file.
+[vars]
+COMPFINDER_LOCATION = "United States"
+COMPFINDER_LANGUAGE = "en"
+COMPFINDER_ZOOM = "15"
+COMPFINDER_DEPTH = "20"
+COMPFINDER_COUNT = "10"
+# Model for the relevance filter (fast classifier). The market brief uses Opus.
+COMPFINDER_FILTER_MODEL = "claude-haiku-4-5"
+# Market-brief model (contextual classifier). Sonnet is fast + sharp; Opus for max depth.
+COMPFINDER_BRIEF_MODEL = "claude-sonnet-4-6"
+# Paid plan allows 1000 subrequests/request; each row uses 2 (plus a few for the one-time
+# client analysis + relevance filter), so 250 rows fits comfortably under the cap.
+COMPFINDER_MAX_ROWS = "250"
