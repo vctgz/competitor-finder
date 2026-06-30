@@ -3,104 +3,198 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Competitor Finder</title>
+<title>GeoGrep - Find Local Competitors From Store Addresses</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:oklch(97% 0 0); --card:#ffffff; --line:#e5e7eb; --txt:#111827; --mut:#6b7280; --accent:#2563eb; --good:#0f9d6b; }
+  :root { --bg:#161f2b; --ink:#e2e8f0; --mut:#94a3b8; --dim:#64748b; --accent:#38bdf8; --amber:#e0a945;
+          --line:rgba(148,163,184,.16); --line2:rgba(148,163,184,.10); --card:rgba(39,55,77,.5);
+          --input:rgba(17,25,38,.6); --good:#34d399; --danger:#fca5a5;
+          --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+          --sans:"Sora",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
   * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--txt); font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
-  .wrap { max-width:880px; margin:0 auto; padding:28px 20px 80px; }
-  h1 { font-size:22px; margin:0 0 2px; }
-  .sub { color:var(--mut); margin:0 0 16px; font-size:13px; }
-  .client { display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap; }
-  .client input { flex:1; min-width:200px; background:var(--card); color:var(--txt); border:1px solid var(--line);
-                  border-radius:9px; padding:10px 12px; font-size:14px; }
-  .sugrow { margin-bottom:10px; }
-  .sugbtn { white-space:nowrap; padding:10px 14px; font-size:14px; }
+  html, body { margin:0; padding:0; }
+  body { min-height:100vh; background:linear-gradient(180deg,#27374d 0%,#1f2c3e 52%,#161f2b 100%) fixed;
+         color:var(--ink); font:15px/1.5 var(--sans); -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
+  body::before { content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:linear-gradient(rgba(148,163,184,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,.06) 1px,transparent 1px);
+    background-size:44px 44px; -webkit-mask-image:radial-gradient(ellipse 80% 65% at 50% 4%,#000 38%,transparent 84%);
+    mask-image:radial-gradient(ellipse 80% 65% at 50% 4%,#000 38%,transparent 84%); }
+  body::after { content:""; position:fixed; top:-300px; left:50%; transform:translateX(-50%); width:1040px; height:580px;
+    max-width:100vw; z-index:0; pointer-events:none; filter:blur(10px); animation:glowdrift 7s ease-in-out infinite;
+    background:radial-gradient(ellipse at center,rgba(56,189,248,.1),rgba(56,189,248,0) 68%); }
+  @keyframes glowdrift { 0%,100%{opacity:.5} 50%{opacity:.8} }
+  ::selection { background:rgba(56,189,248,.26); color:#eaf7ff; }
+  textarea, input { font-family:var(--mono); }
+  textarea::placeholder, input::placeholder { color:var(--dim); }
+
+  .wrap { position:relative; z-index:1; max-width:1000px; margin:0 auto; padding:52px 24px 130px; }
+  .top { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-bottom:30px; }
+  .status { display:inline-flex; align-items:center; gap:8px; color:var(--accent); border:1px solid rgba(56,189,248,.4);
+            background:rgba(56,189,248,.07); border-radius:999px; padding:7px 15px; font:600 11px/1 var(--mono);
+            letter-spacing:.15em; text-transform:uppercase; }
+  .status:before { content:""; width:6px; height:6px; border-radius:50%; background:var(--accent); box-shadow:0 0 8px rgba(56,189,248,.8); }
+  .mode { color:var(--mut); border:1px solid rgba(148,163,184,.22); background:rgba(255,255,255,.02); border-radius:999px;
+          padding:8px 16px; text-decoration:none; font:400 12px/1 var(--mono); letter-spacing:.02em; white-space:nowrap; transition:all .15s; }
+  .mode:hover { border-color:rgba(56,189,248,.5); color:#7dd3fc; background:rgba(56,189,248,.07); }
+  h1 { font-size:44px; line-height:1.0; font-weight:800; letter-spacing:-.03em; margin:0; color:var(--ink); }
+  h1 .hl { color:var(--accent); }
+  .sub { color:var(--mut); margin:18px 0 0; font-size:16px; line-height:1.62; max-width:620px; }
+
+  .panel { margin-top:26px; border:1px solid var(--line); border-radius:14px; background:var(--card);
+           box-shadow:0 24px 70px -34px rgba(0,0,0,.85); overflow:hidden; backdrop-filter:blur(10px); }
+  .panelhead { display:flex; align-items:center; gap:9px; padding:13px 18px; border-bottom:1px solid var(--line); }
+  .panelhead .ph-name { font:600 13px/1 var(--sans); color:var(--ink); letter-spacing:.01em; }
+  .panelhead .ph-sub { font:400 12px/1 var(--mono); color:var(--dim); }
+  .panelbody { padding:26px 26px 24px; }
+  .client { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-bottom:16px; }
+  .client input, textarea, #catinput { width:100%; background:var(--input); color:var(--ink); border:1px solid rgba(148,163,184,.18);
+           border-radius:9px; padding:13px 15px; font:14px/1.45 var(--mono); outline:0; transition:border-color .15s,box-shadow .15s; }
+  .client input { height:50px; padding:0 15px; }
+  .client input:focus, textarea:focus, #catinput:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(56,189,248,.16); }
+  .sugrow { margin-bottom:12px; }
+  .sugbtn { white-space:nowrap; height:auto; padding:11px 16px; font-size:13px; }
   .sugbtn:disabled { opacity:.6; }
-  #sugwrap { margin:2px 0 10px; }
-  .suglabel { color:var(--mut); font-size:12.5px; margin-bottom:7px; }
-  .suglabel b { color:var(--txt); font-weight:600; }
-  .sugchips { display:flex; flex-wrap:wrap; gap:7px; }
-  .sugchip { background:var(--card); color:var(--txt); border:1px solid var(--line); border-radius:20px;
-             padding:5px 12px; font-size:13px; cursor:pointer; user-select:none; transition:all .1s; }
-  .sugchip:hover { border-color:#c7d2fe; }
-  .sugchip.on { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600; }
-  .catfield { position:relative; }
-  #catinput { width:100%; background:var(--card); color:var(--txt); border:1px solid var(--line);
-              border-radius:9px; padding:10px 12px; font-size:14px; outline:0; }
-  .catmenu { position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:30; background:var(--card);
-             border:1px solid var(--line); border-radius:9px; box-shadow:0 6px 20px rgba(0,0,0,.12); max-height:260px; overflow:auto; }
-  .catmenu .opt { padding:8px 12px; font-size:13.5px; cursor:pointer; }
-  .catmenu .opt.active { background:#eef2ff; }
-  .brief { background:#f8fafc; border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:10px;
-           padding:13px 16px; margin-top:16px; }
-  .brief .bt { font-weight:600; font-size:14px; }
-  .brief .bd { margin-top:4px; font-size:13.5px; }
+  #sugwrap { margin:2px 0 12px; }
+  .suglabel { color:var(--mut); font-size:12.5px; margin-bottom:8px; }
+  .suglabel b { color:var(--ink); font-weight:600; }
+  .sugchips { display:flex; flex-wrap:wrap; gap:8px; }
+  .sugchip { background:var(--input); color:var(--mut); border:1px solid rgba(148,163,184,.18); border-radius:999px;
+             padding:6px 13px; font:13px/1 var(--mono); cursor:pointer; user-select:none; transition:all .12s; }
+  .sugchip:hover { border-color:rgba(56,189,248,.4); color:#cbd5e1; }
+  .sugchip.on { background:rgba(56,189,248,.14); color:#bce6fb; border-color:var(--accent); font-weight:600; }
+  .catfield { position:relative; margin-bottom:14px; }
+  .catmenu { position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:30; background:#1b2636;
+             border:1px solid var(--line); border-radius:10px; box-shadow:0 18px 44px rgba(0,0,0,.55); max-height:260px; overflow:auto; }
+  .catmenu .opt { padding:9px 13px; font:13px/1.3 var(--mono); color:var(--ink); cursor:pointer; }
+  .catmenu .opt.active { background:rgba(56,189,248,.12); }
+
+  textarea { display:block; min-height:200px; resize:vertical; line-height:1.7; }
+  .preview { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:15px 0 0; min-height:28px; }
+  .chip { display:inline-flex; align-items:center; gap:7px; border:1px solid rgba(148,163,184,.3); background:rgba(255,255,255,.02);
+          color:var(--mut); border-radius:999px; padding:7px 14px; font:600 11px/1 var(--mono); letter-spacing:.14em; text-transform:uppercase; }
+  .chip:before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; box-shadow:0 0 7px currentColor; }
+  .chip.good { color:var(--accent); background:rgba(56,189,248,.08); border-color:rgba(56,189,248,.4); }
+  .chip.ai { color:var(--amber); background:rgba(224,169,69,.07); border-color:rgba(224,169,69,.3); }
+
+  .row { display:flex; gap:22px; align-items:center; margin-top:22px; flex-wrap:wrap; }
+  button { display:inline-flex; align-items:center; gap:8px; height:46px; padding:0 24px; border:1px solid rgba(56,189,248,.45);
+           border-radius:9px; background:rgba(56,189,248,.1); color:#bce6fb; font:600 14px/1 var(--sans); letter-spacing:.01em;
+           cursor:pointer; transition:all .15s; }
+  button:hover:not(:disabled) { background:rgba(56,189,248,.2); border-color:rgba(56,189,248,.7); color:#eaf7ff; box-shadow:0 0 22px -4px rgba(56,189,248,.5); }
+  button:active:not(:disabled) { transform:translateY(1px); }
+  button.ghost { background:rgba(255,255,255,.02); color:var(--mut); border-color:rgba(148,163,184,.22); }
+  button.ghost:hover:not(:disabled) { background:rgba(56,189,248,.07); border-color:rgba(56,189,248,.45); color:#7dd3fc; box-shadow:none; }
+  button:disabled { opacity:.45; cursor:default; }
+  .toggle { display:inline-flex; align-items:center; gap:8px; color:var(--mut); font:13px/1 var(--mono); cursor:pointer; }
+  .toggle input { width:15px; height:15px; accent-color:var(--accent); cursor:pointer; }
+  label.cnt { color:var(--mut); font:13px/1 var(--mono); display:inline-flex; gap:10px; align-items:center; }
+  label.cnt input[type=number] { width:56px; height:36px; text-align:center; background:var(--input); color:var(--ink);
+           border:1px solid rgba(148,163,184,.18); border-radius:7px; font:13px/1 var(--mono); outline:0; transition:border-color .15s; }
+  label.cnt input[type=number]:focus { border-color:var(--accent); }
+  .slider { position:relative; width:176px; height:18px; display:inline-flex; align-items:center; vertical-align:middle; }
+  .slider .track { position:absolute; left:0; right:0; height:5px; border-radius:999px; background:rgba(148,163,184,.2); }
+  .slider .fill { position:absolute; left:0; height:5px; border-radius:999px; background:var(--accent); box-shadow:0 0 10px rgba(56,189,248,.45); }
+  .slider .thumb { position:absolute; top:50%; width:15px; height:15px; border-radius:50%; background:var(--ink);
+           border:2px solid var(--accent); transform:translateY(-50%); box-shadow:0 1px 4px rgba(0,0,0,.5); pointer-events:none; }
+  .slider input[type=range] { position:absolute; left:0; width:100%; height:18px; margin:0; opacity:0; cursor:pointer; }
+  #radiusVal { display:inline-block; min-width:44px; color:#cbd5e1; font-variant-numeric:tabular-nums; }
+  .meta { color:var(--mut); font:13px/1 var(--mono); margin-left:auto; }
+
+  .progress { margin-top:18px; border:1px solid var(--line); border-radius:9px; background:var(--input); overflow:hidden; }
+  .progressbar { height:3px; background:var(--line2); }
+  .progressbar span { display:block; height:100%; width:0%; background:var(--accent); box-shadow:0 0 10px rgba(56,189,248,.6); transition:width .2s ease; }
+  .progressline { display:flex; justify-content:space-between; gap:10px; color:var(--mut); padding:9px 12px; font:12px/1.3 var(--mono); }
+
+  .brief { background:rgba(39,55,77,.45); border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:11px; padding:13px 16px; margin-top:18px; }
+  .brief .bt { font-weight:600; font-size:14px; color:var(--ink); }
+  .brief .bd { margin-top:4px; font-size:13.5px; color:var(--ink); }
   .brief .bc { margin-top:5px; font-size:13px; color:var(--mut); }
-  .brief .bl { color:var(--txt); font-weight:600; }
+  .brief .bl { color:var(--ink); font-weight:600; }
   .brief .berr { color:var(--mut); font-size:13px; font-style:italic; }
-  textarea { width:100%; min-height:150px; resize:vertical; background:var(--card); color:var(--txt);
-             border:1px solid var(--line); border-radius:10px; padding:12px 14px; font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; }
-  .row { display:flex; gap:12px; align-items:center; margin-top:12px; flex-wrap:wrap; }
-  button { background:var(--accent); color:#fff; border:0; border-radius:9px; padding:10px 20px; font-size:15px; font-weight:600; cursor:pointer;
-           transition:background .15s ease, box-shadow .15s ease, transform .05s ease; }
-  button:hover:not(:disabled) { background:#1d4ed8; box-shadow:0 2px 8px rgba(37,99,235,.28); }
-  button:active:not(:disabled) { transform:translateY(1px); box-shadow:none; }
-  button.ghost { background:transparent; color:var(--txt); border:1px solid var(--line); }
-  button.ghost:hover:not(:disabled) { background:#f3f4f6; border-color:#d1d5db; box-shadow:none; }
-  button:disabled { opacity:.55; cursor:default; }
-  label.cnt { color:var(--mut); font-size:13px; display:flex; gap:6px; align-items:center; }
-  label.cnt input[type=number] { width:54px; background:var(--card); color:var(--txt); border:1px solid var(--line); border-radius:7px; padding:5px 7px; }
-  label.cnt input[type=range] { width:120px; accent-color:var(--accent); vertical-align:middle; cursor:pointer; }
-  #radiusVal { display:inline-block; min-width:40px; color:var(--txt); font-variant-numeric:tabular-nums; }
-  .meta { color:var(--mut); font-size:13px; margin-left:auto; }
-  .loc { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-top:16px; box-shadow:0 1px 2px rgba(0,0,0,.04); }
-  .loc h2 { font-size:16px; margin:0; }
-  .loc .matched { color:var(--mut); font-size:12.5px; margin:3px 0 0; }
-  .badge { display:inline-block; font-size:11px; padding:1px 7px; border-radius:20px; border:1px solid var(--line); color:var(--mut); margin-left:8px; vertical-align:middle; }
-  .err { color:#dc2626; font-size:13px; margin:6px 0 0; }
-  ol { margin:12px 0 0; padding-left:0; list-style:none; counter-reset:c; }
-  ol li { counter-increment:c; display:flex; gap:10px; padding:8px 0; border-top:1px solid var(--line); }
-  ol li::before { content:counter(c); color:var(--mut); font-variant-numeric:tabular-nums; min-width:18px; text-align:right; }
-  .cn { font-weight:600; }
+
+  .loc { background:rgba(39,55,77,.45); border:1px solid var(--line); border-radius:12px; margin-top:16px; overflow:hidden;
+         box-shadow:0 18px 50px -30px rgba(0,0,0,.7); backdrop-filter:blur(6px); }
+  .lochead { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:14px 16px; border-bottom:1px solid var(--line2); }
+  .loc h2 { font-size:16px; margin:0; color:var(--ink); }
+  .matched { color:var(--mut); font-size:12.5px; margin:3px 0 0; }
+  .badge { display:inline-flex; align-items:center; font:600 11px/1 var(--mono); padding:6px 9px; border-radius:999px;
+           border:1px solid rgba(148,163,184,.3); color:var(--mut); white-space:nowrap; text-transform:uppercase; letter-spacing:.05em; }
+  .badge.high { color:var(--accent); background:rgba(56,189,248,.08); border-color:rgba(56,189,248,.4); }
+  .badge.review { color:var(--amber); background:rgba(224,169,69,.07); border-color:rgba(224,169,69,.3); }
+  .badge.low { color:var(--danger); background:rgba(248,113,113,.08); border-color:rgba(248,113,113,.32); }
+  .err { color:var(--danger); font-size:13px; margin:8px 16px 14px; }
+  .tablewrap { overflow:auto; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { color:var(--mut); background:rgba(17,25,38,.4); text-align:left; padding:9px 12px; border-bottom:1px solid var(--line2);
+       font:600 10.5px/1 var(--mono); text-transform:uppercase; letter-spacing:.06em; white-space:nowrap; }
+  td { padding:9px 12px; border-bottom:1px solid var(--line2); vertical-align:top; color:var(--ink); }
+  tbody tr:hover { background:rgba(56,189,248,.04); }
+  tr:last-child td { border-bottom:0; }
+  .rank { color:var(--dim); font:12px/1 var(--mono); width:38px; }
+  .cn { font-weight:600; color:var(--ink); }
   .ca { color:var(--mut); font-size:12.5px; }
-  .pill { color:var(--mut); font-size:12px; white-space:nowrap; margin-left:auto; padding-left:10px; text-align:right; }
-  .star { color:#f59e0b; }
+  .num { color:var(--mut); font:12px/1.4 var(--mono); white-space:nowrap; }
+  .star { color:var(--amber); }
   a.maps { color:var(--accent); text-decoration:none; font-size:12px; }
+  a.maps:hover { text-decoration:underline; }
+  @media (max-width:720px) { .wrap { padding:44px 18px 100px; } .client { grid-template-columns:1fr; } h1 { font-size:36px; }
+    .row { gap:14px; } .meta { width:100%; margin-left:0; } .lochead { display:block; } .badge { margin-top:8px; }
+    .slider { width:150px; } }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Competitor Finder · Advanced</h1>
-  <p class="sub">Manually pick the competitor types to search for. Paste one address per line; up to 250. <a href="/" style="color:var(--accent);text-decoration:none">← Back to simple mode</a></p>
-  <div class="client">
-    <input id="client" type="text" placeholder="Client name">
-    <input id="website" type="text" placeholder="Main website (sharpens the market read)">
+  <div class="top">
+    <span class="status">advanced</span>
+    <a class="mode" href="/">simple</a>
   </div>
-  <div class="sugrow">
-    <button id="suggest" type="button" class="ghost sugbtn">✨ Suggest competitor types</button>
-  </div>
-  <div id="sugwrap" hidden>
-    <div class="suglabel">✨ <b id="sugfor">Competitor types</b> — AI-suggested &amp; selected. Unselect any you don't want, or add more below.</div>
-    <div id="sugchips" class="sugchips"></div>
-  </div>
-  <div class="catfield">
-    <input id="catinput" type="text" autocomplete="off" placeholder="Add a competitor type… (optional)">
-    <div id="catmenu" class="catmenu" hidden></div>
-  </div>
-  <textarea id="in" placeholder="123 Main St., Town, ST 00000"></textarea>
-  <div class="row">
-    <button id="go">Find competitors</button>
-    <button id="csv" class="ghost" hidden>Export CSV</button>
-    <label class="cnt">max competitors each <input id="count" type="number" min="3" max="20" value="__COUNT__"></label>
-    <label class="cnt">within <input id="radius" type="range" min="1" max="30" step="1" value="10"><span id="radiusVal">10 mi</span></label>
-    <span class="meta" id="meta"></span>
-  </div>
+  <h1>Geo<span class="hl">Grep</span></h1>
+  <p class="sub">Choose specific competitor types for more targeted searches. This takes longer since each type runs separately.</p>
+  <section class="panel">
+    <div class="panelhead"><span>📍</span><span class="ph-name">geogrep</span><span class="ph-sub">— advanced search</span></div>
+    <div class="panelbody">
+      <div class="client">
+        <input id="client" type="text" placeholder="Company name">
+        <input id="website" type="text" placeholder="Main website (recommended)">
+      </div>
+      <div class="sugrow">
+        <button id="suggest" type="button" class="ghost sugbtn">Suggest types</button>
+      </div>
+      <div id="sugwrap" hidden>
+        <div class="suglabel"><b id="sugfor">Competitor types</b> - suggested and selected. Unselect any you don't want, or add more below.</div>
+        <div id="sugchips" class="sugchips"></div>
+      </div>
+      <div class="catfield">
+        <input id="catinput" type="text" autocomplete="off" placeholder="Add a competitor type... (optional)">
+        <div id="catmenu" class="catmenu" hidden></div>
+      </div>
+      <textarea id="in" placeholder="123 Main St., Town, ST 00000"></textarea>
+      <div id="preview" class="preview"></div>
+      <div class="row">
+        <button id="go" disabled>Run search</button>
+        <button id="csv" class="ghost" hidden>Export CSV</button>
+        <label class="toggle"><input id="ai" type="checkbox"> AI refine if no types selected</label>
+        <label class="cnt">max <input id="count" type="number" min="3" max="20" value="__COUNT__"></label>
+        <label class="cnt">within
+          <span class="slider"><span class="track"></span><span class="fill" id="radfill"></span><span class="thumb" id="radthumb"></span><input id="radius" type="range" min="1" max="30" step="1" value="10"></span>
+          <span id="radiusVal">10 mi</span>
+        </label>
+        <span class="meta" id="meta"></span>
+      </div>
+      <div id="progress" class="progress" hidden>
+        <div class="progressbar"><span id="progbar"></span></div>
+        <div class="progressline"><span id="progtext">Ready</span><span id="progcount"></span></div>
+      </div>
+    </div>
+  </section>
   <div id="out"></div>
 </div>
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => (s||"").replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const rows = () => $('#in').value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
 const mapLink = p => p.place_id
   ? `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(p.place_id)}`
   : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((p.title||'')+' '+(p.address||''))}`;
@@ -109,139 +203,186 @@ function rating(p){
   if(p.rating==null) return '';
   return `<span class="star">★</span> ${p.rating}${p.votes!=null?` (${p.votes})`:''}`;
 }
-function compRow(c){
-  const dist = c.distance_mi!=null ? `${c.distance_mi} mi · ` : '';
-  return `<li><div><div class="cn">${esc(c.title)}</div>`
-    + `<div class="ca">${esc(c.category)}${c.address?' · '+esc(c.address):''}</div></div>`
-    + `<div class="pill">${dist}${rating(c)}<br><a class="maps" target="_blank" href="${mapLink(c)}">view ↗</a></div></li>`;
+function conf(r){
+  const c = r.match_confidence || 'review';
+  if(c === 'high') return '<span class="badge high">high match</span>';
+  if(c === 'low') return '<span class="badge low">check match</span>';
+  return '<span class="badge review">review match</span>';
+}
+function compRow(c, i){
+  return `<tr><td class="rank">${i+1}</td>`
+    + `<td><div class="cn">${esc(c.title)}</div><div class="ca">${esc(c.address||'')}</div></td>`
+    + `<td class="ca">${esc(c.category||'')}</td>`
+    + `<td class="num">${c.distance_mi!=null ? `${c.distance_mi} mi` : ''}</td>`
+    + `<td class="num">${rating(c)}</td>`
+    + `<td><a class="maps" target="_blank" href="${mapLink(c)}">view</a></td></tr>`;
 }
 function briefBlock(b){
   if(!b) return '';
   if(!b.business && !b.market){
-    return `<div class="brief"><div class="berr">market analysis unavailable${b.error?` — ${esc(b.error)}`:''}</div></div>`;
+    return `<div class="brief"><div class="berr">AI refinement unavailable${b.error?` - ${esc(b.error)}`:''}</div></div>`;
   }
   const comps = (b.competitors||[]).length
     ? `<div class="bc"><span class="bl">Known competitors:</span> ${b.competitors.map(esc).join(', ')}</div>` : '';
   const mkt = b.market
-    ? `<div class="bc"><span class="bl">Market:</span> ${esc(b.market)}${b.keyword?` · searching nearby for <b>${esc(b.keyword)}</b>`:''}</div>` : '';
+    ? `<div class="bc"><span class="bl">Market:</span> ${esc(b.market)}${b.keyword?` · search term <b>${esc(b.keyword)}</b>`:''}</div>` : '';
   return `<div class="brief">`
-    + `<div class="bt">${esc(b.name||'Client')} — market brief</div>`
+    + `<div class="bt">${esc(b.name||'Client')} - AI refinement</div>`
     + (b.business?`<div class="bd">${esc(b.business)}</div>`:'')
     + mkt + comps + `</div>`;
 }
 function locBlock(r){
   if(!r.found || !r.store){
-    return `<div class="loc"><h2>${esc(r.query)}</h2>`
+    return `<div class="loc"><div class="lochead"><div><h2>${esc(r.query)}</h2></div><span class="badge low">not found</span></div>`
       + `<p class="err">${esc(r.error||'not found')}</p></div>`;
   }
   const s = r.store;
   const comps = r.competitors.length
-    ? `<ol>${r.competitors.map(compRow).join('')}</ol>`
+    ? `<div class="tablewrap"><table><thead><tr><th>#</th><th>Competitor</th><th>Category</th><th>Distance</th><th>Rating</th><th>Maps</th></tr></thead><tbody>${r.competitors.map(compRow).join('')}</tbody></table></div>`
     : `<p class="err">${esc(r.error||'no competitors found')}</p>`;
-  return `<div class="loc">`
+  return `<div class="loc"><div class="lochead"><div>`
     + `<h2>${esc(s.title)}</h2>`
-    + `<p class="matched">matched: ${esc(s.address)} · ${rating(s)} · <a class="maps" target="_blank" href="${mapLink(s)}">view ↗</a></p>`
-    + comps + `</div>`;
+    + `<p class="matched">matched: ${esc(s.address)} · ${rating(s)} · <a class="maps" target="_blank" href="${mapLink(s)}">view</a></p>`
+    + `</div>${conf(r)}</div>${comps}</div>`;
 }
 
 let lastResults = [];
+let CATS = [];
+let chipIds = [];
+const selectedCats = new Set();
+const catinput = $('#catinput'), catmenu = $('#catmenu'), sugchips = $('#sugchips'), sugwrap = $('#sugwrap');
+const hz = id => { const s = id.replace(/_/g,' '); return s.charAt(0).toUpperCase() + s.slice(1); };
+fetch('/api/categories').then(r=>r.json()).then(j=>{ CATS = Array.isArray(j)?j:[]; }).catch(()=>{});
 
-const CSV_COLS = ['store_input','store_matched','store_category','store_address','store_rating',
-  'rank','competitor','competitor_category','competitor_address','competitor_rating','competitor_votes','distance_mi'];
+const CSV_COLS = ['store_input','match_confidence','store_matched','store_category','store_address','store_rating',
+  'rank','competitor','competitor_category','competitor_address','competitor_rating','competitor_votes','distance_mi','maps_url'];
 const csvCell = v => {
   const s = v==null ? '' : String(v);
   return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
 };
 function toCSV(results){
-  const rows = [CSV_COLS.join(',')];
+  const out = [CSV_COLS.join(',')];
   for(const r of results){
     const s = r.store || {};
-    const base = [r.query, s.title, s.category, s.address, s.rating];
+    const base = [r.query, r.match_confidence, s.title, s.category, s.address, s.rating];
     if(r.found && r.competitors.length){
-      r.competitors.forEach((c,i) => rows.push(
-        [...base, i+1, c.title, c.category, c.address, c.rating, c.votes, c.distance_mi].map(csvCell).join(',')));
+      r.competitors.forEach((c,i) => out.push(
+        [...base, i+1, c.title, c.category, c.address, c.rating, c.votes, c.distance_mi, mapLink(c)].map(csvCell).join(',')));
     } else {
-      rows.push([...base, '', '', '', '', '', '', ''].map(csvCell).join(','));
+      out.push([...base, '', '', '', '', '', '', '', ''].map(csvCell).join(','));
     }
   }
-  return rows.join('\n');
+  return out.join('\n');
 }
 function downloadCSV(){
   if(!lastResults.length) return;
   const blob = new Blob([toCSV(lastResults)], {type:'text/csv;charset=utf-8'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'competitors.csv';
+  a.download = 'geogrep-competitors.csv';
   a.click();
   URL.revokeObjectURL(a.href);
 }
-
+function selectedList(){ return chipIds.filter(id=>selectedCats.has(id)); }
+function setProgress(stage, done, total){
+  const pct = total ? Math.round((done / total) * 100) : 8;
+  $('#progress').hidden = false;
+  $('#progbar').style.width = `${Math.max(8, pct)}%`;
+  const label = stage === 'analyzing' ? 'AI refinement' : stage === 'filtering' ? 'Filtering matches' : stage === 'done' ? 'Done' : 'Searching locations';
+  $('#progtext').textContent = label;
+  $('#progcount').textContent = total ? `${done}/${total}` : '';
+}
+function updatePreview(){
+  const n = rows().length, cats = selectedList().length, ai = $('#ai').checked && !cats;
+  $('#go').disabled = n === 0;
+  $('#preview').innerHTML = n
+    ? `<span class="chip good">${n} row${n===1?'':'s'} ready</span><span class="chip">${cats ? `${cats} type${cats===1?'':'s'}` : 'store category search'}</span><span class="chip${ai?' ai':''}">${ai?'AI refine on':'fast mode'}</span>`
+    : '<span class="chip">paste addresses to begin</span>';
+}
+async function requestFind(payload){
+  const resp = await fetch('/api/find-stream', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+  if(!resp.body){
+    const fallback = await fetch('/api/find', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+    return fallback.json();
+  }
+  const reader = resp.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '', final = null;
+  while(true){
+    const {value, done} = await reader.read();
+    if(done) break;
+    buf += dec.decode(value, {stream:true});
+    const parts = buf.split('\n');
+    buf = parts.pop();
+    for(const line of parts){
+      if(!line.trim()) continue;
+      const msg = JSON.parse(line);
+      if(msg.type === 'progress') setProgress(msg.stage, msg.done || 0, msg.total || 0);
+      else final = msg.type === 'result' ? msg : msg;
+    }
+  }
+  if(buf.trim()){
+    const msg = JSON.parse(buf);
+    final = msg.type === 'result' ? msg : msg;
+  }
+  return final || {error:'empty response'};
+}
 async function run(){
   const text = $('#in').value.trim();
   if(!text){ $('#in').focus(); return; }
-  const count = Math.max(3, Math.min(20, parseInt($('#count').value)||6));
-  $('#go').disabled = true; $('#go').textContent = 'Finding…';
+  const count = Math.max(3, Math.min(20, parseInt($('#count').value)||10));
+  const cats = selectedList();
+  $('#go').disabled = true; $('#go').textContent = 'Running...';
   $('#csv').hidden = true; lastResults = [];
   $('#meta').textContent = ''; $('#out').innerHTML = '';
+  setProgress('searching', 0, rows().length);
   try {
     const client = $('#client').value.trim();
     const website = $('#website').value.trim();
-    const radius = parseInt($('#radius').value);   // 1–30 mi
-    const resp = await fetch('/api/find', {method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({input:text, count, client, website, categories:selectedList(), radius})});
-    const data = await resp.json();
+    const radius = parseInt($('#radius').value);
+    const data = await requestFind({input:text, count, client, website, categories:cats, radius, fast: cats.length > 0 || !$('#ai').checked});
     if(data.error){ $('#out').innerHTML = `<p class="err">${esc(data.error)}</p>`; return; }
-    lastResults = data.results;
-    $('#out').innerHTML = briefBlock(data.brief) + data.results.map(locBlock).join('');
-    const found = data.results.filter(r=>r.found).length;
-    $('#meta').textContent = `${found}/${data.results.length} located`;
+    lastResults = data.results || [];
+    $('#out').innerHTML = briefBlock(data.brief) + lastResults.map(locBlock).join('');
+    const found = lastResults.filter(r=>r.found).length;
+    const comps = lastResults.reduce((n,r)=>n+(r.competitors?r.competitors.length:0),0);
+    $('#meta').textContent = `${found}/${lastResults.length} located · ${comps} competitors`;
     $('#csv').hidden = false;
+    setProgress('done', lastResults.length, lastResults.length);
   } catch(e){
     $('#out').innerHTML = `<p class="err">request failed: ${esc(String(e))}</p>`;
   } finally {
-    $('#go').disabled = false; $('#go').textContent = 'Find competitors';
+    $('#go').textContent = 'Run search';
+    updatePreview();
   }
 }
-function fmtRadius(){ $('#radiusVal').textContent = parseInt($('#radius').value) + ' mi'; }
-$('#radius').addEventListener('input', fmtRadius);
-fmtRadius();
-
-// --- Competitor types: AI-suggested chips + typeahead (Google business categories) ---
-let CATS = [];                       // full taxonomy (for the typeahead)
-let chipIds = [];                    // categories shown as chips (AI + manual), in order
-const selectedCats = new Set();      // which chips are toggled on
-const catinput = $('#catinput'), catmenu = $('#catmenu'), sugchips = $('#sugchips'), sugwrap = $('#sugwrap');
-const hz = id => { const s = id.replace(/_/g,' '); return s.charAt(0).toUpperCase() + s.slice(1); };
-fetch('/api/categories').then(r=>r.json()).then(j=>{ CATS = Array.isArray(j)?j:[]; }).catch(()=>{});
-
 function renderSug(){
-  if(!chipIds.length){ sugwrap.hidden = true; return; }
+  if(!chipIds.length){ sugwrap.hidden = true; updatePreview(); return; }
   sugwrap.hidden = false;
   sugchips.innerHTML = chipIds.map(id =>
     `<span class="sugchip${selectedCats.has(id)?' on':''}" data-id="${esc(id)}">${esc(hz(id))}</span>`).join('');
   sugchips.querySelectorAll('.sugchip').forEach(el=>{
     el.onclick = ()=>{ const id=el.dataset.id; selectedCats.has(id)?selectedCats.delete(id):selectedCats.add(id); renderSug(); };
   });
+  updatePreview();
 }
 function addChip(id, select){ if(!chipIds.includes(id)) chipIds.push(id); if(select) selectedCats.add(id); renderSug(); }
-function selectedList(){ return chipIds.filter(id=>selectedCats.has(id)); }
 
-// Suggest button: ask the AI for competitor categories (pre-selected; click to toggle).
 $('#suggest').addEventListener('click', async ()=>{
   const client = $('#client').value.trim(), website = $('#website').value.trim();
   if(!client && !website){ $('#client').focus(); return; }
-  const btn = $('#suggest'), lbl = btn.textContent; btn.disabled = true; btn.textContent = 'Thinking…';
+  const btn = $('#suggest'), lbl = btn.textContent; btn.disabled = true; btn.textContent = 'Thinking...';
   try {
     const r = await fetch('/api/suggest', {method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({client, website})});
     const d = await r.json();
     const ids = (d.brief && d.brief.categories) || [];
-    if(d.error || !ids.length){ sugwrap.hidden=false; $('#sugfor').textContent = d.error || 'No suggestions — add types below'; sugchips.innerHTML=''; }
+    if(d.error || !ids.length){ sugwrap.hidden=false; $('#sugfor').textContent = d.error || 'No suggestions - add types below'; sugchips.innerHTML=''; }
     else { $('#sugfor').textContent = (d.brief.market || client || 'Competitor types'); ids.forEach(id=>addChip(id, true)); }
+    updatePreview();
   } catch(e){ /* ignore */ } finally { btn.disabled = false; btn.textContent = lbl; }
 });
 
-// Typeahead to add more types
 function showMenu(){
   const q = catinput.value.trim().toLowerCase(); if(!q){ catmenu.hidden=true; return; }
   const qu = q.replace(/ /g,'_');
@@ -259,6 +400,22 @@ catinput.addEventListener('keydown', e=>{
   else if(e.key==='Escape'){ catmenu.hidden=true; }
 });
 document.addEventListener('click', e=>{ if(e.target!==catinput && !catmenu.contains(e.target)) catmenu.hidden=true; });
+function fmtRadius(){
+  const el = $('#radius'), v = parseInt(el.value);
+  $('#radiusVal').textContent = v + ' mi';
+  const min = +el.min || 1, max = +el.max || 30;
+  const pct = ((v - min) / (max - min)) * 100;
+  const f = $('#radfill'), t = $('#radthumb');
+  if(f) f.style.width = pct + '%';
+  if(t) t.style.left = `calc(${pct}% - 7px)`;
+}
+['input','change'].forEach(ev => {
+  $('#in').addEventListener(ev, updatePreview);
+  $('#ai').addEventListener(ev, updatePreview);
+});
+$('#radius').addEventListener('input', fmtRadius);
+fmtRadius();
+updatePreview();
 $('#go').addEventListener('click', run);
 $('#csv').addEventListener('click', downloadCSV);
 $('#in').addEventListener('keydown', e => { if((e.metaKey||e.ctrlKey) && e.key==='Enter') run(); });
